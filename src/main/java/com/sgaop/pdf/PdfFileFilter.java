@@ -4,11 +4,8 @@ import javax.swing.filechooser.FileFilter;
 import java.io.File;
 
 /**
- * Created with IntelliJ IDEA.
- *
- * @author: 黄川
- * 创建时间: 2017/11/8  14:34
- * 描述此类：
+ * @author 黄川 huchuc@vip.qq.com
+ * @date 2018/10/09 0020
  */
 public class PdfFileFilter extends FileFilter {
     private static final String SUFFIX = ".pdf";

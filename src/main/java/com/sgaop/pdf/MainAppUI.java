@@ -1,15 +1,22 @@
 package com.sgaop.pdf;
 
+import com.sun.image.codec.jpeg.JPEGCodec;
+import com.sun.image.codec.jpeg.JPEGImageEncoder;
 import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.rendering.ImageType;
+import org.apache.pdfbox.rendering.PDFRenderer;
 
 import javax.swing.*;
 import javax.swing.filechooser.FileFilter;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.plaf.FontUIResource;
 import java.awt.*;
+import java.awt.image.BufferedImage;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.text.MessageFormat;
+import java.util.ArrayList;
 import java.util.Enumeration;
 
 /**
@@ -25,13 +32,15 @@ public class MainAppUI {
     private JTextField endPage;
     private JButton startSpilt;
     private JPanel rootPanel;
+    private JButton converToImg;
+    private JTextField dpi;
 
     private PDDocument document = new PDDocument();
     private String filePath;
 
     public MainAppUI() {
         JFrame jFrame = new JFrame();
-        int w = 450, h = 120;
+        int w = 500, h = 160;
         jFrame.setTitle("PDF拆分工具");
         jFrame.setResizable(false);
         int x = (int) (Toolkit.getDefaultToolkit().getScreenSize().getWidth() / 2 - (w / 2));
@@ -44,10 +53,9 @@ public class MainAppUI {
         choseFile.addActionListener((e) -> {
             JFileChooser jfc = new JFileChooser();
             jfc.setFileSelectionMode(JFileChooser.FILES_ONLY);
+            jfc.setMultiSelectionEnabled(false);
+            jfc.setFileFilter(new PdfFileFilter());
             jfc.showDialog(new JLabel(), "选择PDF文件");
-            FileFilter pdfFileFilter = new FileNameExtensionFilter("PDF file", "pdf", "PDF");
-            jfc.addChoosableFileFilter(pdfFileFilter);
-            jfc.setFileFilter(pdfFileFilter);
             File file = jfc.getSelectedFile();
             if (file != null && file.isFile()) {
                 pdfPath.setText(file.getAbsolutePath());
@@ -55,7 +63,9 @@ public class MainAppUI {
                 try {
                     document = PDDocument.load(file);
                     pageLable.setText(String.valueOf(document.getNumberOfPages()));
+                    endPage.setText(String.valueOf(document.getNumberOfPages()));
                     startSpilt.setEnabled(true);
+                    converToImg.setEnabled(true);
                 } catch (IOException e1) {
                     JOptionPane.showMessageDialog(rootPanel, "文件有误！" + e1.getMessage());
                 }
@@ -74,6 +84,50 @@ public class MainAppUI {
                 JOptionPane.showMessageDialog(rootPanel, "生成成功！" + path);
             } catch (IOException e1) {
                 JOptionPane.showMessageDialog(rootPanel, "生成失败！" + e1.getMessage());
+            } finally {
+                try {
+                    document.close();
+                } catch (IOException e1) {
+                }
+            }
+        });
+        converToImg.addActionListener((e) -> {
+            try {
+                int start = Integer.parseInt(startPage.getText());
+                int end = Integer.parseInt(endPage.getText());
+                PDFRenderer pdfRenderer = new PDFRenderer(document);
+                //存储pdf中每一页BufferedImage
+                java.util.List<BufferedImage> bufferedImageList = new ArrayList();
+                for (int i = start; i < end; i++) {
+                    //注意此处的参数100可以调整，值越大图片越清晰
+                    BufferedImage img = pdfRenderer.renderImageWithDPI(i, Integer.parseInt(dpi.getText()), ImageType.RGB);
+                    bufferedImageList.add(img);
+                }
+                int heightTotal = 0;
+                for (int j = 0; j < bufferedImageList.size(); j++) {
+                    heightTotal += bufferedImageList.get(j).getHeight();
+                }
+                int heightCurr = 0;
+                BufferedImage concatImage = new BufferedImage(bufferedImageList.get(0).getWidth(), heightTotal, BufferedImage.TYPE_INT_RGB);
+                Graphics2D g2d = concatImage.createGraphics();
+                for (int j = 0; j < bufferedImageList.size(); j++) {
+                    g2d.drawImage(bufferedImageList.get(j), 0, heightCurr, null);
+                    heightCurr += bufferedImageList.get(j).getHeight();
+                }
+                g2d.dispose();
+                String path = MessageFormat.format("{0}-{1}-{2}.jpg", filePath, start, end);
+                FileOutputStream out = new FileOutputStream(path);
+                JPEGImageEncoder encoder = JPEGCodec.createJPEGEncoder(out);
+                encoder.encode(concatImage);
+                out.close();
+                JOptionPane.showMessageDialog(rootPanel, "生成成功！" + path);
+            } catch (IOException e1) {
+                JOptionPane.showMessageDialog(rootPanel, "生成失败！" + e1.getMessage());
+            } finally {
+                try {
+                    document.close();
+                } catch (IOException e1) {
+                }
             }
         });
     }

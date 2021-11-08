@@ -7,8 +7,6 @@ import org.apache.pdfbox.rendering.ImageType;
 import org.apache.pdfbox.rendering.PDFRenderer;
 
 import javax.swing.*;
-import javax.swing.filechooser.FileFilter;
-import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.plaf.FontUIResource;
 import java.awt.*;
 import java.awt.image.BufferedImage;
@@ -41,7 +39,7 @@ public class MainAppUI {
     public MainAppUI() {
         JFrame jFrame = new JFrame();
         int w = 500, h = 160;
-        jFrame.setTitle("PDF拆分工具");
+        jFrame.setTitle("PDF拆分工具( huchuc@vip.qq.com )");
         jFrame.setResizable(false);
         int x = (int) (Toolkit.getDefaultToolkit().getScreenSize().getWidth() / 2 - (w / 2));
         int y = (int) (Toolkit.getDefaultToolkit().getScreenSize().getHeight() / 2 - (h / 2));
@@ -50,7 +48,7 @@ public class MainAppUI {
         jFrame.pack();
         jFrame.setVisible(true);
         jFrame.setBounds(x, y, w, h);
-        choseFile.addActionListener((e) -> {
+        choseFile.addActionListener((event) -> {
             JFileChooser jfc = new JFileChooser();
             jfc.setFileSelectionMode(JFileChooser.FILES_ONLY);
             jfc.setMultiSelectionEnabled(false);
@@ -66,32 +64,32 @@ public class MainAppUI {
                     endPage.setText(String.valueOf(document.getNumberOfPages()));
                     startSpilt.setEnabled(true);
                     converToImg.setEnabled(true);
-                } catch (IOException e1) {
-                    JOptionPane.showMessageDialog(rootPanel, "文件有误！" + e1.getMessage());
+                } catch (IOException e) {
+                    JOptionPane.showMessageDialog(rootPanel, "文件有误！" + e.getMessage());
                 }
             }
         });
-        startSpilt.addActionListener((e) -> {
-            try {
+        startSpilt.addActionListener((event) -> {
+            try (PDDocument tempdoc = new PDDocument()) {
                 int start = Integer.parseInt(startPage.getText());
                 int end = Integer.parseInt(endPage.getText());
-                PDDocument tempdoc = new PDDocument();
-                for (int i = start; i < end; i++) {
+                if (start < 1) {
+                    throw new IllegalArgumentException("开始页码不能小于1");
+                }
+                if (end > document.getNumberOfPages()) {
+                    throw new IllegalArgumentException("结束页码不能大于" + document.getNumberOfPages());
+                }
+                for (int i = (start - 1); i < end; i++) {
                     tempdoc.addPage(document.getPage(i));
                 }
                 String path = MessageFormat.format("{0}-{1}-{2}.pdf", filePath, start, end);
                 tempdoc.save(path);
                 JOptionPane.showMessageDialog(rootPanel, "生成成功！" + path);
-            } catch (IOException e1) {
-                JOptionPane.showMessageDialog(rootPanel, "生成失败！" + e1.getMessage());
-            } finally {
-                try {
-                    document.close();
-                } catch (IOException e1) {
-                }
+            } catch (Exception e) {
+                JOptionPane.showMessageDialog(rootPanel, "生成失败！" + e.getMessage(), "错误警告", JOptionPane.ERROR_MESSAGE);
             }
         });
-        converToImg.addActionListener((e) -> {
+        converToImg.addActionListener((event) -> {
             try {
                 int start = Integer.parseInt(startPage.getText());
                 int end = Integer.parseInt(endPage.getText());
@@ -121,13 +119,8 @@ public class MainAppUI {
                 encoder.encode(concatImage);
                 out.close();
                 JOptionPane.showMessageDialog(rootPanel, "生成成功！" + path);
-            } catch (IOException e1) {
-                JOptionPane.showMessageDialog(rootPanel, "生成失败！" + e1.getMessage());
-            } finally {
-                try {
-                    document.close();
-                } catch (IOException e1) {
-                }
+            } catch (IOException e) {
+                JOptionPane.showMessageDialog(rootPanel, "生成失败！" + e.getMessage(), "错误警告", JOptionPane.ERROR_MESSAGE);
             }
         });
     }
